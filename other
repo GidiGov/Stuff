@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Check if the correct number of arguments are provided
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <file_path> <key> <new_value>"
+    exit 1
+fi
+
+# Assign command-line arguments to variables
+file_path="$1"
+key="$2"
+new_value="$3"
+
+# Use sed to replace the value after the key
+sed -i "s|^${key}=.*|${key}=${new_value}|" "$file_path"
+
+# Explanation:
+# -i : Edit the file in place.
+# s|^${key}=.*|${key}=${new_value}| : Substitute the line starting with 'key=' with 'key=new_value'.
+# ^${key}= : Matches lines that start with 'key='.
+# .* : Matches any characters following 'key='.
+# | : Delimiter used instead of / to avoid escaping / in paths.
+
+# Print a message to indicate the replacement is done
+echo "Replaced value of ${key} with ${new_value} in ${file_path}"
