@@ -23,3 +23,16 @@ sed -i "s|^${key}=.*|${key}=${new_value}|" "$file_path"
 
 # Print a message to indicate the replacement is done
 echo "Replaced value of ${key} with ${new_value} in ${file_path}"
+
+
+#!/bin/bash
+
+# Check the current user
+if [ "$(whoami)" != "prmjbd" ]; then
+  echo "Error: This script must be run as prmjbd."
+  exit 1
+fi
+
+# Continue with the rest of the script
+echo "Proceeding with the rest of the script..."
+# Your script logic here
