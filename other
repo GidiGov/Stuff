@@ -9,7 +9,7 @@ INSERT INTO #TempComments (review_activity_id, comments)
 SELECT 
     rrac.review_activity_id,
     STUFF((
-        SELECT ', ' + comments
+        SELECT N', ' + CAST(comments AS NVARCHAR(MAX))
         FROM RRS_reviews_activity_comments rrac2
         WHERE rrac2.review_activity_id = rrac.review_activity_id
         FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '')
@@ -25,7 +25,7 @@ GROUP BY
 -- Main query
 SELECT 
     -- [Other fields remain the same]
-    comments = ISNULL(tc.comments, ''),
+    comments = ISNULL(tc.comments, N''),
     -- [Rest of the fields remain the same]
 FROM 
     RRS_leader_reviews LR
