@@ -9,13 +9,9 @@ INSERT INTO #TempComments (review_activity_id, comments)
 SELECT 
     rrac.review_activity_id,
     STUFF((
-        SELECT N',' + CONVERT(NVARCHAR(MAX), 
-               CAST(N'' AS XML).value('xs:base64Binary(xs:hexBinary(sql:column("bin")))', 'VARBINARY(MAX)'))
-        FROM (
-            SELECT CAST(comments AS VARBINARY(MAX)) AS bin
-            FROM RRS_reviews_activity_comments rrac2
-            WHERE rrac2.review_activity_id = rrac.review_activity_id
-        ) AS subquery
+        SELECT N',' + REPLACE(REPLACE(REPLACE(CAST(comments AS NVARCHAR(MAX)), CHAR(10), '\n'), CHAR(13), '\r'), CHAR(26), '')
+        FROM RRS_reviews_activity_comments rrac2
+        WHERE rrac2.review_activity_id = rrac.review_activity_id
         FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '')
 FROM 
     RRS_reviews_activity_comments rrac
