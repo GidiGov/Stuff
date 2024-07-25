@@ -21,9 +21,9 @@ FROM
 GROUP BY 
     rrac.review_activity_id
 
--- The rest of your query remains the same
 -- Main query
 SELECT 
+    LR.leader_review_id,  -- Added leader_review_id to the SELECT clause
     -- [Other fields remain the same]
     comments = ISNULL(tc.comments, N''),
     -- [Rest of the fields remain the same]
@@ -36,7 +36,8 @@ FROM
 WHERE 
     -- [WHERE conditions remain the same]
 ORDER BY 
-    -- [ORDER BY clauses remain the same]
+    LR.leader_review_id,  -- Added leader_review_id to the ORDER BY clause
+    -- [Rest of the ORDER BY clauses remain the same]
 
 -- Clean up
 DROP TABLE #TempComments
