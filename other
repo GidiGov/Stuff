@@ -1,38 +1,175 @@
-#!/bin/bash
+USE [bcg_old]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+BEGIN --Segment: Branch Banking
+    --Registration: (blank)
+    --Review Type: Client
+    --Category: IIROC
+    --Template: IIROC File Review
+    --Time Period: where the Activity Review Date falls between today's date and the date of 7 years ago
 
-# Check if the correct number of arguments are provided
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <file_path> <key> <new_value>"
-    exit 1
-fi
+    SET NOCOUNT ON;
 
-# Assign command-line arguments to variables
-file_path="$1"
-key="$2"
-new_value="$3"
+    DECLARE @RRSTUserRegion INT = NULL,
+            @RRSTUser INT = NULL,
+            @segment INT = 1,
+            @region INT = NULL,
+            @district INT = NULL,
+            @clusterDistrictBM INT = NULL,
+            @transit INT = NULL,
+            @advisorID INT = NULL,
+            @registrationID INT = NULL,
+            @reviewType INT = NULL,
+            @reviewTypeStatusID INT = NULL,
+            @categoryID INT = NULL,
+            @templateID INT = NULL,
+            @activityID INT = NULL,
+            @questionID INT = NULL,
+            @activityStatusID INT = NULL,
+            @startDt DATETIME = DATEADD(YEAR, -7, GETDATE()),
+            @endDt DATETIME = GETDATE(),
+            @lang CHAR(2) = 'en',
+            @securityID INT = NULL,
+            @securityLevelId INT = NULL;
 
-# Use sed to replace the value after the key
-sed -i "s|^${key}=.*|${key}=${new_value}|" "$file_path"
+    DECLARE @registrationIDQuery VARCHAR(50);
+    IF @registrationID = -1
+        SET @registrationIDQuery = '3,4';
+    ELSE
+        SET @registrationIDQuery = CAST(@registrationID AS VARCHAR);
 
-# Explanation:
-# -i : Edit the file in place.
-# s|^${key}=.*|${key}=${new_value}| : Substitute the line starting with 'key=' with 'key=new_value'.
-# ^${key}= : Matches lines that start with 'key='.
-# .* : Matches any characters following 'key='.
-# | : Delimiter used instead of / to avoid escaping / in paths.
+    DECLARE @HierarchicalSecurityID INT,
+            @HierarchicalsecurityLevelId INT;
 
-# Print a message to indicate the replacement is done
-echo "Replaced value of ${key} with ${new_value} in ${file_path}"
+    IF @securityLevelId IN (1, 2)
+    BEGIN
+        SET @HierarchicalSecurityID = @securityID;
+        SET @HierarchicalsecurityLevelId = @securityLevelId;
+    END
+    ELSE
+    BEGIN
+        SET @HierarchicalSecurityID = NULL;
+        SET @HierarchicalsecurityLevelId = NULL;
+    END;
 
+    CREATE TABLE #tbl_HierarchicalInformation (
+        rowID INT NOT NULL IDENTITY(1,1),
+        TranserWonder INT NOT NULL,
+        districtNo INT NOT NULL,
+        regionNo INT NOT NULL,
+        PRIMARY KEY (rowID)
+    );
 
-#!/bin/bash
+    INSERT INTO #tbl_HierarchicalInformation
+    SELECT 
+        clue,
+        eeFransctumber,
+        district,
+        region
+    FROM 
+        YourSourceTable -- replace with actual source table name
+    WHERE 
+        segment = @segment
+        AND region = @region
+        AND district = @district
+        AND clusterDistrictBM = @clusterDistrictBM
+        AND transit = @transit;
 
-# Check the current user
-if [ "$(whoami)" != "prmjbd" ]; then
-  echo "Error: This script must be run as prmjbd."
-  exit 1
-fi
+    SELECT 
+        rra.review_activity_id,
+        lr.leader_review_id,
+        (SELECT TOP 1 
+            REPLACE(REPLACE(REPLACE(REPLACE(
+            STUFF((SELECT CONCAT(', ', rrac.comments)
+                   FROM RRS_reviews_activity_comments rrac
+                   WHERE rrac.review_activity_id = rra.review_activity_id
+                   FOR XML PATH('')), 1, 2, ''), '<comments>', ''), '</comments>', ''), '</comments>', '')
+         FROM RRS_reviews_activity_comments rrac
+         WHERE rrac.review_activity_id = rra.review_activity_id
+         FOR XML PATH('')) AS comments,
+        rra.hierarchy_name,
+        ISNULL(CASE WHEN @segment IN (2, 7) THEN RTRIM(TTN.LEVEL40NAME) ELSE RegionName END, '') AS RegionName,
+        ISNULL(CASE WHEN @segment IN (2, 7) THEN TTN.REGIONLEVEL ELSE RegionNo END, '') AS RegionNo,
+        ISNULL(CASE WHEN @segment IN (2, 7) THEN RTRIM(TTN.LEVEL30NAME) ELSE DistrictName END, '') AS DistrictName,
+        ISNULL(CASE WHEN @segment IN (2, 7) THEN TTN.DISTRICTMARKETLEVEL ELSE DistrictNo END, '') AS DistrictNo,
+        ISNULL(CASE WHEN @segment IN (2, 7) THEN (SELECT TOP 1 RTRIM(ClusterName) FROM YourClusterTable WHERE RTC.Cluster = rra.cluster_transit) ELSE ClusterName END, '') AS ClusterName,
+        ISNULL(ClusterNo, rra.cluster_transit) AS ClusterNo,
+        ISNULL(CASE WHEN @segment IN (2, 7) THEN (SELECT CASE WHEN ISNULL(TTN.BranchShortDesc, '0') = '0' OR TTN.BranchShortDesc = '' THEN RTRIM(TTN.BranchLongDesc) ELSE RTRIM(TTN.BranchShortDesc) END FROM YourBranchTable WHERE RTC.SegmentID = @segment AND RTC.Core_Transit = rra.location_id) ELSE TransitName END, '') AS TransitName,
+        rra.location_id AS TransitNumber,
+        lr.Leader1Name,
+        lr.Leader2Name,
+        lr.Leader3Name,
+        lr.RSOName,
+        CONVERT(CHAR(15), lr.created_dt, 106) AS LeaderReviewCreatedDate,
+        CONVERT(CHAR(15), lr.start_dt, 106) AS LeaderReviewStartDate,
+        CONVERT(CHAR(15), lr.submitted_dt, 106) AS LeaderReviewSubmittedDate,
+        lr.LeaderReviewStatus,
+        rtr.ReviewTypeName,
+        rtr.CategoryName,
+        rtr.TemplateName,
+        rtr.AdvisoryName,
+        rtr.AdvisoryCoinId,
+        (SELECT TOP 1 CASE WHEN @lang = 'en' THEN sub_RARL.rrco_registration_type_desc_en_txt ELSE sub_RARL.rrco_registration_type_desc_fr_txt END FROM RRCO_ADVISOR_REGISTRATION_LOOKUP sub_RARL WHERE sub_RARL.rrco_registration_id = rra.rrco_registration_id) AS RegistrationName,
+        rra.Client_Name_txt,
+        ISNULL((SELECT TOP 1 CASE WHEN @lang = 'en' THEN client_status_desc_en_txt ELSE client_status_desc_fr_txt END FROM RRS_client_status_lookup sub_RCSL), '') AS client_status_id,
+        rra.client_reason_selection_txt,
+        CONVERT(CHAR(15), rra.reviewTypeCreatedDate, 106) AS reviewTypeCreatedDate,
+        CONVERT(CHAR(15), rra.reviewTypeStartDate, 106) AS reviewTypeStartDate,
+        rra.ReviewTypeStatus,
+        CONVERT(CHAR(15), rra.reviewTypeSubmittedDate, 106) AS reviewTypeSubmittedDate,
+        rra.attestation_status,
+        CONVERT(CHAR(15), rra.attestation_start_dt, 106) AS attestation_start_dt,
+        CONVERT(CHAR(15), rra.attestation_target_dt, 106) AS attestation_target_dt,
+        CONVERT(CHAR(15), rra.attestation_end_dt, 106) AS attestation_end_dt,
+        rra.ActivityName,
+        rra.account_number,
+        CONVERT(CHAR(15), rra.activityStartDate, 106) AS activityStartDate,
+        CONVERT(CHAR(15), rra.account_dt, 106) AS account_dt,
+        rra.reviewActivitystatus,
+        CONVERT(CHAR(15), rra.activitySubmittedDate, 106) AS activitySubmittedDate,
+        rra.QuestionName,
+        CASE rra.response_type_id WHEN 2 THEN 'Yes' ELSE 'No' END AS response_type_id,
+        CONVERT(CHAR(15), rra.dateIssued, 106) AS dateIssued,
+        rra.assignedto,
+        rra.EscalationStatus,
+        rra.escalatedTo,
+        CONVERT(CHAR(15), rra.Tier1TargetResolutionDate, 106) AS Tier1TargetResolutionDate,
+        CONVERT(CHAR(15), rra.EscalatedToTier2Date, 106) AS EscalatedToTier2Date,
+        CONVERT(CHAR(15), rra.Tier2TargetResolutionDate, 106) AS Tier2TargetResolutionDate,
+        CONVERT(CHAR(15), rra.EscalatedToTier3Date, 106) AS EscalatedToTier3Date,
+        CONVERT(CHAR(15), rra.Tier3TargetResolutionDate, 106) AS Tier3TargetResolutionDate,
+        CONVERT(CHAR(15), rra.resolution_dt, 106) AS resolution_dt,
+        (SELECT TOP 1 CASE WHEN ISNULL(RT.FREQUENCYID, '') = '' THEN '' ELSE CASE @lang WHEN 'EN' THEN mfco_frequency_des_en_txt ELSE mfco_frequency_desc_fr_txt END END FROM MFCO_FREQUENCY_LOOKUP WHERE mfco_frequency_id = RT.FREQUENCYID) AS transitFrequency
+    FROM RRS_leader_reviews lr
+    INNER JOIN RRS_type_reviews rtr ON lr.leader_review_id = rtr.leader_review_id AND rtr.deleted_f1 = 0
+    INNER JOIN RRCO_SUMMARY_STATUS_LOOKUP RSSL ON RSSL.rrco_summary_status_id = lr.review_status_id
+    INNER JOIN RRS_reviews_activities rra ON rtr.type_review_id = rra.type_review_id AND rra.deleted_f1 = 0 AND rra.active_f1 = 1
+    INNER JOIN RRCO_FORMS_STATUS_LOOKUP RFSL ON RFSL.rrco_forms_status_id = rra.activity_status_id
+    INNER JOIN RRS_activities da_ra ON da_ra.activity_id = rra.activity_id
+    LEFT JOIN RRS_reviews_activity_questions RRAQ ON rra.review_activity_id = RRAQ.review_activity_id AND RRAQ.deleted_f1 = 0 AND RRAQ.active_f1 = 1
+    LEFT JOIN RRS_questions da_rq ON da_rq.question_id = RRAQ.question_id AND da_rq.deleted_f1 = 0
+    LEFT JOIN RRCO_REGION_LOOKUP RRL ON RRL.rrco_region_id = lr.RRCO_Region
+    INNER JOIN RRS_templates rt ON rt.template_id = rtr.template_id
+    WHERE lr.deleted_f1 = 0
+      AND lr.segment_id = @segment
+      AND (lr.RRCO_Region = ISNULL(@RRSTUserRegion, lr.RRCO_Region))
+      AND (lr.rso_id = ISNULL(@RRSTUser, lr.rso_id))
+      AND (rtr.review_type_id = ISNULL(@reviewType, rtr.review_type_id))
+      AND (ISNULL(rtr.type_review_status_id, '') = ISNULL(@reviewTypeStatusID, ''))
+      AND (rtr.Category_id = ISNULL(@categoryID, rtr.Category_id))
+      AND (rtr.template_id = ISNULL(@templateID, rtr.template_id))
+      AND (rra.activity_id = ISNULL(@activityID, rra.activity_id))
+      AND (rra.activity_status_id = ISNULL(@activityStatusID, rra.activity_status_id))
+      AND (rra.account_dt >= ISNULL(CONVERT(VARCHAR(10), CONVERT(DATETIME, @startDt, 102)), CONVERT(VARCHAR(10), rra.account_dt, 101)))
+      AND (rra.account_dt < ISNULL(CONVERT(VARCHAR(10), CONVERT(DATETIME, @endDt + 1, 101)), CONVERT(VARCHAR(10), rra.account_dt, 101)))
+      AND (lr.RRCO_Region = CASE WHEN @securityLevelId IN (1, 2) AND ISNULL(@RRSTUserRegion, 0) > 0 THEN (SELECT RRCO_Region FROM TBL_SECURITY WHERE SecurityID = @securityID) ELSE lr.RRCO_Region END)
+      AND (rtr.location_id = ISNULL(@transit, rtr.location_id) OR rtr.location_id IS NULL)
+      AND (rtr.advisor_id = ISNULL(@advisorID, rtr.advisor_id) OR rtr.advisor_id IS NULL)
+      AND (@segment IN (2, 7) AND lr.cluster_transit IN (SELECT clusterNo FROM #tbl_HierarchicalInformation) OR @segment IN (1, 5) AND lr.cluster_transit IN (SELECT TransitNumber FROM #tbl_HierarchicalInformation));
 
-# Continue with the rest of the script
-echo "Proceeding with the rest of the script..."
-# Your script logic here
+    DROP TABLE #tbl_HierarchicalInformation;
+END
+GO
