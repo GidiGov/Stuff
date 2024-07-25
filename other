@@ -36,6 +36,7 @@ BEGIN --Segment: Branch Banking
             @securityLevelId INT = NULL;
 
     DECLARE @registrationIDQuery VARCHAR(50);
+
     IF @registrationID = -1
         SET @registrationIDQuery = '3,4';
     ELSE
@@ -55,28 +56,17 @@ BEGIN --Segment: Branch Banking
         SET @HierarchicalsecurityLevelId = NULL;
     END;
 
-    CREATE TABLE #tbl_HierarchicalInformation (
-        rowID INT NOT NULL IDENTITY(1,1),
-        TranserWonder INT NOT NULL,
-        districtNo INT NOT NULL,
-        regionNo INT NOT NULL,
-        PRIMARY KEY (rowID)
-    );
-
-    INSERT INTO #tbl_HierarchicalInformation
-    SELECT 
-        clue,
-        eeFransctumber,
-        district,
-        region
-    FROM 
-        YourSourceTable -- replace with actual source table name
-    WHERE 
-        segment = @segment
-        AND region = @region
-        AND district = @district
-        AND clusterDistrictBM = @clusterDistrictBM
-        AND transit = @transit;
+    --CREATE TABLE #tbl_HierarchicalInformation(
+    --rowID INT NOT NULL IDENTITY(1,1),
+    --TranserWonder INT NOT NULL,
+    --districtNo INT NOT NULL,
+    --regionNo INT NOT NULL,
+    --PRIMARY KEY (rowID)
+    --)
+    --insert into #tbl_HierarchicalInformation
+    --select clue, eeFransctumber, district, region
+    --from YourSourceTable -- replace with actual source table name
+    --where segment = @segment AND region = @region AND district = @district AND clusterDistrictBM = @clusterDistrictBM AND transit = @transit;
 
     SELECT 
         rra.review_activity_id,
@@ -142,7 +132,7 @@ BEGIN --Segment: Branch Banking
         CONVERT(CHAR(15), rra.EscalatedToTier3Date, 106) AS EscalatedToTier3Date,
         CONVERT(CHAR(15), rra.Tier3TargetResolutionDate, 106) AS Tier3TargetResolutionDate,
         CONVERT(CHAR(15), rra.resolution_dt, 106) AS resolution_dt,
-        (SELECT TOP 1 CASE WHEN ISNULL(RT.FREQUENCYID, '') = '' THEN '' ELSE CASE @lang WHEN 'EN' THEN mfco_frequency_des_en_txt ELSE mfco_frequency_desc_fr_txt END END FROM MFCO_FREQUENCY_LOOKUP WHERE mfco_frequency_id = RT.FREQUENCYID) AS transitFrequency
+        (SELECT TOP 1 FREQUENCYDESC = (CASE WHEN ISNULL(RT.FREQUENCYID, '') = '' THEN '' ELSE CASE @lang WHEN 'EN' THEN mfco_frequency_des_en_txt ELSE mfco_frequency_desc_fr_txt END END) FROM MFCO_FREQUENCY_LOOKUP WHERE mfco_frequency_id = RT.FREQUENCYID) AS transitFrequency
     FROM RRS_leader_reviews lr
     INNER JOIN RRS_type_reviews rtr ON lr.leader_review_id = rtr.leader_review_id AND rtr.deleted_f1 = 0
     INNER JOIN RRCO_SUMMARY_STATUS_LOOKUP RSSL ON RSSL.rrco_summary_status_id = lr.review_status_id
