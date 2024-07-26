@@ -1,43 +1,25 @@
--- Create a temporary table to store comments
-CREATE TABLE #TempComments (
-    review_activity_id INT,
-    comments NVARCHAR(MAX)
-)
-
--- Populate the temporary table with comments
-INSERT INTO #TempComments (review_activity_id, comments)
-SELECT 
-    rrac.review_activity_id,
-    STUFF((
-        SELECT N',' + REPLACE(REPLACE(REPLACE(CAST(comments AS NVARCHAR(MAX)), CHAR(10), '\n'), CHAR(13), '\r'), CHAR(26), '')
-        FROM RRS_reviews_activity_comments rrac2
-        WHERE rrac2.review_activity_id = rrac.review_activity_id
-        FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '')
-FROM 
-    RRS_reviews_activity_comments rrac
-    INNER JOIN RRS_reviews_activities rra ON rra.review_activity_id = rrac.review_activity_id
-    INNER JOIN RRS_type_reviews rtr ON rtr.type_review_id = rra.type_review_id
-    INNER JOIN RRS_leader_reviews rlr ON rlr.leader_review_id = rtr.leader_review_id
-GROUP BY 
-    rrac.review_activity_id
-
 -- Main query
 SELECT 
-    LR.leader_review_id,  -- Added leader_review_id to the SELECT clause
+    LR.leader_review_id,
     -- [Other fields remain the same]
-    comments = ISNULL(tc.comments, N''),
+    comments = ISNULL(
+        (SELECT 
+            STUFF((
+                SELECT N',' + REPLACE(REPLACE(REPLACE(CAST(comments AS NVARCHAR(MAX)), CHAR(10), '\n'), CHAR(13), '\r'), CHAR(26), '')
+                FROM RRS_reviews_activity_comments rrac
+                WHERE rrac.review_activity_id = RRA.review_activity_id
+                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)')
+            , 1, 1, '')
+        ), N''
+    ),
     -- [Rest of the fields remain the same]
 FROM 
     RRS_leader_reviews LR
     INNER JOIN RRS_type_reviews RTR ON LR.leader_review_id = RTR.leader_review_id AND RTR.deleted_fl = 0
     INNER JOIN RRS_reviews_activities RRA ON RTR.type_review_id = RRA.type_review_id AND RRA.deleted_fl = 0 AND RRA.active_fl = 1
-    LEFT JOIN #TempComments tc ON tc.review_activity_id = RRA.review_activity_id
     -- [Rest of the JOINs remain the same]
 WHERE 
     -- [WHERE conditions remain the same]
 ORDER BY 
-    LR.leader_review_id,  -- Added leader_review_id to the ORDER BY clause
+    LR.leader_review_id,
     -- [Rest of the ORDER BY clauses remain the same]
-
--- Clean up
-DROP TABLE #TempComments
