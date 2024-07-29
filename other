@@ -1,25 +1,15 @@
--- Main query
-SELECT 
-    LR.leader_review_id,
-    -- [Other fields remain the same]
-    comments = ISNULL(
-        (SELECT 
-            STUFF((
-                SELECT N',' + REPLACE(REPLACE(REPLACE(CAST(comments AS NVARCHAR(MAX)), CHAR(10), '\n'), CHAR(13), '\r'), CHAR(26), '')
-                FROM RRS_reviews_activity_comments rrac
-                WHERE rrac.review_activity_id = RRA.review_activity_id
-                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)')
-            , 1, 1, '')
-        ), N''
-    ),
-    -- [Rest of the fields remain the same]
-FROM 
-    RRS_leader_reviews LR
-    INNER JOIN RRS_type_reviews RTR ON LR.leader_review_id = RTR.leader_review_id AND RTR.deleted_fl = 0
-    INNER JOIN RRS_reviews_activities RRA ON RTR.type_review_id = RRA.type_review_id AND RRA.deleted_fl = 0 AND RRA.active_fl = 1
-    -- [Rest of the JOINs remain the same]
-WHERE 
-    -- [WHERE conditions remain the same]
-ORDER BY 
-    LR.leader_review_id,
-    -- [Rest of the ORDER BY clauses remain the same]
+#!/bin/bash
+
+# Set the namespace
+NAMESPACE="your-namespace"
+
+# Get all running pods in the namespace
+PODS=$(oc get pods -n $NAMESPACE --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}')
+
+# Loop through each pod to get their image URLs
+for POD in $PODS
+do
+  echo "Pod: $POD"
+  oc get pod $POD -n $NAMESPACE -o jsonpath='{range .spec.containers[*]}{.name}: {.image}{"\n"}{end}'
+  echo "--------------------------------------------"
+done
