@@ -1,15 +1,23 @@
 #!/bin/bash
 
-# Set the namespace
-NAMESPACE="your-namespace"
+import schedule
+import time
+import datetime
 
-# Get all running pods in the namespace
-PODS=$(oc get pods -n $NAMESPACE --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}')
+def job():
+    print("Running daily job...")
+    # Your daily job code here
 
-# Loop through each pod to get their image URLs
-for POD in $PODS
-do
-  echo "Pod: $POD"
-  oc get pod $POD -n $NAMESPACE -o jsonpath='{range .spec.containers[*]}{.name}: {.image}{"\n"}{end}'
-  echo "--------------------------------------------"
-done
+    # Check if today is Monday
+    today = datetime.datetime.today().weekday()
+    if today == 0:  # Monday is 0
+        print("Today is Monday. Continuing indefinitely...")
+        while True:
+            time.sleep(1)  # Keeps the script running indefinitely
+
+# Schedule the job every morning at 7:00 AM (or your desired time)
+schedule.every().day.at("07:00").do(job)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
