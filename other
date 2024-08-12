@@ -1,23 +1,25 @@
 #!/bin/bash
 
-import schedule
-import time
-import datetime
+# The script to be executed every Monday morning
+SCRIPT_TO_RUN="/path/to/your_script.sh"
 
-def job():
-    print("Running daily job...")
-    # Your daily job code here
-
-    # Check if today is Monday
-    today = datetime.datetime.today().weekday()
-    if today == 0:  # Monday is 0
-        print("Today is Monday. Continuing indefinitely...")
-        while True:
-            time.sleep(1)  # Keeps the script running indefinitely
-
-# Schedule the job every morning at 7:00 AM (or your desired time)
-schedule.every().day.at("07:00").do(job)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+# Infinite loop to keep the script running
+while true
+do
+    # Get the current day of the week (1 = Monday, 7 = Sunday)
+    DAY_OF_WEEK=$(date +%u)
+    
+    # Get the current time in 24-hour format (e.g., 07:00 for 7 AM)
+    CURRENT_TIME=$(date +%H:%M)
+    
+    # Check if today is Monday (1) and the time is 07:00 AM
+    if [[ "$DAY_OF_WEEK" -eq 1 && "$CURRENT_TIME" == "07:00" ]]; then
+        echo "Running script: $SCRIPT_TO_RUN"
+        bash "$SCRIPT_TO_RUN"
+        # Sleep for a day to prevent the script from running multiple times on the same Monday
+        sleep 24h
+    else
+        # Sleep for 1 minute before checking again
+        sleep 1m
+    fi
+done
