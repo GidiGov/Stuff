@@ -1,0 +1,47 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_dev:
+        description: "Deploy to Dev"
+        type: boolean
+        default: false
+      deploy_staging:
+        description: "Deploy to Staging"
+        type: boolean
+        default: false
+      deploy_production:
+        description: "Deploy to Production"
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: "Dev"
+            environment_name: "dev"
+            deploy_it: ${{ github.event.inputs.deploy_dev }}
+          - name: "Staging"
+            environment_name: "staging"
+            deploy_it: ${{ github.event.inputs.deploy_staging }}
+          - name: "Production"
+            environment_name: "production"
+            deploy_it: ${{ github.event.inputs.deploy_production }}
+      fail-fast: false
+
+    # Only run a matrix entry if 'deploy_it' is true
+    if: ${{ matrix.deploy_it == 'true' }}
+
+    steps:
+      - name: Deploy to ${{ matrix.environment_name }}
+        run: |
+          echo "Deploying to ${{ matrix.environment_name }}"
+          # ... your deployment steps here ...
+
+    # Optionally, set GitHub’s environment here if you want environment protection rules:
+    environment:
+      name: ${{ matrix.environment_name }}
