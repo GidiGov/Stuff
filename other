@@ -1,25 +1,20 @@
-#!/bin/bash
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import java.io.IOException;
 
-# The script to be executed every Monday morning
-SCRIPT_TO_RUN="/path/to/your_script.sh"
-
-# Infinite loop to keep the script running
-while true
-do
-    # Get the current day of the week (1 = Monday, 7 = Sunday)
-    DAY_OF_WEEK=$(date +%u)
-    
-    # Get the current time in 24-hour format (e.g., 07:00 for 7 AM)
-    CURRENT_TIME=$(date +%H:%M)
-    
-    # Check if today is Monday (1) and the time is 07:00 AM
-    if [[ "$DAY_OF_WEEK" -eq 1 && "$CURRENT_TIME" == "07:00" ]]; then
-        echo "Running script: $SCRIPT_TO_RUN"
-        bash "$SCRIPT_TO_RUN"
-        # Sleep for a day to prevent the script from running multiple times on the same Monday
-        sleep 24h
-    else
-        # Sleep for 1 minute before checking again
-        sleep 1m
-    fi
-done
+public class SSLPoke {
+    public static void main(String[] args) {
+        String host = args[0];
+        int port = Integer.parseInt(args[1]);
+        try {
+            SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+            SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+            socket.startHandshake();
+            socket.close();
+            System.out.println("Successfully connected");
+        } catch (IOException e) {
+            System.out.println("Failed to connect: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}
