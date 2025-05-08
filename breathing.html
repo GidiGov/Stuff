@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3-Minute Breathing Space Game</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f8ff;
+      margin: 0;
+      padding: 20px;
+    }
+    #screen {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #instructions {
+      white-space: pre-line;
+      text-align: left;
+      display: inline-block;
+      margin: 20px 0;
+      max-width: 600px;
+    }
+    #timer {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+    }
+    #circle {
+      margin: 20px auto;
+      width: 100px;
+      height: 100px;
+      background: #8fc;
+      border-radius: 50%;
+      display: none;
+    }
+    @keyframes breathe {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.8); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div id="screen">
+    <h1>3-Minute Breathing Space</h1>
+    <button id="startBtn">Start Game</button>
+  </div>
+
+  <div id="circle"></div>
+
+  <script>
+    const steps = [
+      {
+        title: 'Step 1. Becoming Aware',
+        text: `Bringing your awareness to your inner experience, ask: What is my experience right now?
+• What thoughts are going through your mind? As best you can, acknowledge thoughts as mental events.
+• What feelings are here? Turn toward any sense of emotional discomfort or unpleasant feelings.
+• What body sensations are here right now? Scan your body for sensations of tightness or bracing.`,
+        duration: 60,
+        animation: false
+      },
+      {
+        title: 'Step 2. Gathering',
+        text: `Redirect your attention to focus on the physical sensations of the breath itself.
+Move close to the sense of the breath in the abdomen: feel the abdominal wall expanding as the breath comes in and falling back as it goes out.
+Follow the breath all the way in and out, anchoring yourself in the present.`,
+        duration: 60,
+        animation: true
+      },
+      {
+        title: 'Step 3. Expanding',
+        text: `Expand your awareness around your breathing to include a sense of the body as a whole, your posture, and facial expression.
+If you notice sensations of discomfort, breathe into them on the in-breath, then soften and open with the out-breath.
+Bring this expanded awareness into the next moments of your day.`,
+        duration: 60,
+        animation: true
+      }
+    ];
+
+    let currentStep = -1;
+    let timerInterval;
+
+    function startGame() {
+      document.getElementById('startBtn').style.display = 'none';
+      nextStep();
+    }
+
+    function nextStep() {
+      clearInterval(timerInterval);
+      currentStep++;
+      if (currentStep < steps.length) {
+        showStep(steps[currentStep]);
+      } else {
+        endGame();
+      }
+    }
+
+    function showStep(step) {
+      const screen = document.getElementById('screen');
+      screen.innerHTML = `
+        <h2>${step.title}</h2>
+        <div id="instructions">${step.text}</div>
+        <div id="timer">Time: ${step.duration}s</div>
+      `;
+
+      const circle = document.getElementById('circle');
+      if (step.animation) {
+        circle.style.display = 'block';
+        circle.style.animation = 'breathe 10s infinite';
+      } else {
+        circle.style.display = 'none';
+      }
+
+      let timeLeft = step.duration;
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer').textContent = `Time: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          nextStep();
+        }
+      }, 1000);
+    }
+
+    function endGame() {
+      document.getElementById('circle').style.display = 'none';
+      document.getElementById('screen').innerHTML = `
+        <h2>Congratulations!</h2>
+        <p>You have completed the 3-Minute Breathing Space.</p>
+        <p>🌟🌟🌟</p>
+      `;
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+  </script>
+</body>
+</html>
